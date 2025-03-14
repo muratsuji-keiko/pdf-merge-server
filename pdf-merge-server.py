@@ -8,17 +8,17 @@ app = Flask(__name__)
 def home():
     return "PDF Merge API is running!"
 
-# PDFを結合するエンドポイント
+# 📌 PDFを結合するエンドポイント（POSTリクエストを受け付ける）
 @app.route("/merge_pdfs", methods=["POST"])
 def merge_pdfs():
     try:
-        pdf_files = request.json.get("pdf_files", [])
-        output_file = "/tmp/merged_output.pdf"  # Renderでは `/tmp` に一時保存
+        pdf_files = request.json.get("pdf_files", [])  # JSONのリクエストデータを取得
+        output_file = "/tmp/merged_output.pdf"  # Renderの一時保存用フォルダ
 
         if not pdf_files:
             return jsonify({"error": "PDFファイルが指定されていません"}), 400
 
-        # PDFをマージ
+        # 📌 PDFをマージ
         merger = PdfMerger()
         for pdf_url in pdf_files:
             merger.append(pdf_url)
