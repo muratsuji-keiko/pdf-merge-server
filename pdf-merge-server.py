@@ -4,7 +4,7 @@ import traceback
 import os
 import re
 import base64
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from PyPDF2 import PdfMerger
 
 app = Flask(__name__)
@@ -83,6 +83,15 @@ def merge_pdfs():
         error_message = traceback.format_exc()
         print(f"❌ サーバー内部エラー:\n{error_message}")
         return jsonify({"error": str(e)}), 500
+
+@app.route("/download_merged", methods=["GET"])
+def download_merged():
+    output_file = "/tmp/merged_output.pdf"
+
+    if not os.path.exists(output_file):
+        return jsonify({"error": "マージ済みPDFが見つかりません"}), 404
+
+    return send_file(output_file, as_attachment=True, mimetype="application/pdf")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
