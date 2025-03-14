@@ -1,8 +1,8 @@
-import requests
+import base64
 import time
 import traceback
 from flask import Flask, request, jsonify
-from PyPDF2 import PdfMerger, PdfReader
+from PyPDF2 import PdfMerger
 import os
 
 app = Flask(__name__)
@@ -15,58 +15,32 @@ def home():
 def merge_pdfs():
     start_time = time.time()
     try:
-        pdf_urls = request.json.get("pdf_files", [])
+        pdf_files = request.json.get("pdf_files", [])
         output_file = "/tmp/merged_output.pdf"
 
-        if not pdf_urls:
-            print("❌ エラー: PDFファイルのURLが指定されていません")
-            return jsonify({"error": "PDFファイルのURLが指定されていません"}), 400
+        if not pdf_files:
+            print("❌ エラー: PDFデータが指定されていません")
+            return jsonify({"error": "PDFデータが指定されていません"}), 400
 
-        print(f"📥 {len(pdf_urls)}個のPDFをダウンロード開始...")
+        print(f"📥 {len(pdf_files)}個のPDFを受信...")
 
         temp_pdf_files = []
-        for i, pdf_url in enumerate(pdf_urls):
-            print(f"🚀 ダウンロード開始: {pdf_url}")
+        for i, pdf in enumerate(pdf_files):
+            filename = pdf["filename"]
+            pdf_data = base64.b64decode(pdf["data"])
 
-            try:
-                response = requests.get(pdf_url, stream=True)
-            except Exception as e:
-                print(f"❌ リクエストエラー: {pdf_url} ({str(e)})")
-                return jsonify({"error": f"リクエストエラー: {pdf_url}"}), 400
-
-            print(f"🔍 ステータスコード: {response.status_code}")
-            print(f"🔍 Content-Type: {response.headers.get('Content-Type')}")
-            print(f"🔍 最初の100バイト: {response.content[:100]}")  # HTMLの可能性をチェック
-
-            if response.status_code != 200:
-                print(f"❌ ダウンロード失敗: {pdf_url} (ステータスコード: {response.status_code})")
-                return jsonify({"error": f"ダウンロード失敗: {pdf_url}"}), 400
-
-            temp_path = f"/tmp/temp_pdf_{i}.pdf"
+            temp_path = f"/tmp/{filename}"
             with open(temp_path, "wb") as f:
-                f.write(response.content)
-
-            # ✅ PDFとして開けるかチェック
-            try:
-                with open(temp_path, "rb") as f:
-                    PdfReader(f)
-            except Exception as e:
-                print(f"❌ 無効なPDF: {pdf_url} ({str(e)})")
-                os.remove(temp_path)  # 破損ファイルは削除
-                return jsonify({"error": f"無効なPDF: {pdf_url}"}), 400
+                f.write(pdf_data)
 
             temp_pdf_files.append(temp_path)
-            print(f"✅ {pdf_url} ダウンロード完了")
+            print(f"✅ {filename} 保存完了")
 
         print(f"📑 PDFをマージ中...")
 
         merger = PdfMerger()
         for pdf in temp_pdf_files:
-            try:
-                merger.append(pdf)
-            except Exception as e:
-                print(f"❌ PDFマージ失敗: {pdf} ({str(e)})")
-                return jsonify({"error": f"PDFマージ失敗: {pdf}"}), 400
+            merger.append(pdf)
 
         merger.write(output_file)
         merger.close()
