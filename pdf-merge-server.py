@@ -25,7 +25,12 @@ def merge_pdfs():
 
         temp_pdf_files = []
         for i, pdf_url in enumerate(pdf_urls):
+            print(f"🚀 ダウンロード開始: {pdf_url}")
+
             response = requests.get(pdf_url, stream=True)
+            print(f"🔍 ステータスコード: {response.status_code}")
+            print(f"🔍 Content-Type: {response.headers.get('Content-Type')}")
+            print(f"🔍 最初の100バイト: {response.content[:100]}")  # HTMLの場合すぐ分かる
 
             if response.status_code != 200:
                 print(f"❌ ダウンロード失敗: {pdf_url} (ステータスコード: {response.status_code})")
@@ -35,21 +40,12 @@ def merge_pdfs():
             with open(temp_path, "wb") as f:
                 f.write(response.content)
 
-            # **🚀 (A) ダウンロードしたファイルの最初のバイトをチェック**
+            # **(A) ダウンロードしたデータの最初のバイトをチェック**
             with open(temp_path, "rb") as f:
                 header = f.read(4)
                 if header != b"%PDF":
-                    print(f"⚠️ 無効なPDF: {temp_path}（ヘッダーが違う）")
+                    print(f"⚠️ 無効なPDF: {pdf_url}（ヘッダーが違う）")
                     return jsonify({"error": f"無効なPDF: {pdf_url}"}), 400
-
-            # **🚀 (B) PyPDF2で開けるかチェック**
-            try:
-                with open(temp_path, "rb") as f:
-                    reader = PdfReader(f)
-                    reader.pages  # PDFが正しく開けるか確認
-            except Exception as e:
-                print(f"❌ PyPDF2で開けないPDF: {temp_path}（{str(e)}）")
-                return jsonify({"error": f"PyPDF2で開けないPDF: {pdf_url}"}), 400
 
             temp_pdf_files.append(temp_path)
             print(f"✅ {pdf_url} ダウンロード＆チェック完了")
