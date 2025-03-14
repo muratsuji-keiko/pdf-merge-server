@@ -26,10 +26,6 @@ def merge_pdfs():
         temp_pdf_files = []
         for i, pdf_url in enumerate(pdf_urls):
             response = requests.get(pdf_url, stream=True)
-            
-            # 🚀 レスポンスヘッダーとデータをログに出す（デバッグ）
-            print(f"🚀 {pdf_url} のレスポンスヘッダー: {response.headers}")
-            print(f"🚀 {pdf_url} の最初の100バイト: {response.content[:100]}")
 
             if response.status_code != 200:
                 print(f"❌ ダウンロード失敗: {pdf_url} (ステータスコード: {response.status_code})")
@@ -39,15 +35,8 @@ def merge_pdfs():
             with open(temp_path, "wb") as f:
                 f.write(response.content)
 
-            # 📌 PDFのデータが本当にPDFかチェック
-            with open(temp_path, "rb") as f:
-                header = f.read(4)
-                if header != b"%PDF":
-                    print(f"⚠️ 無効なPDF: {temp_path}（形式が違う）")
-                    return jsonify({"error": f"無効なPDF: {pdf_url}（ヘッダーが違う）"}), 400
-
             temp_pdf_files.append(temp_path)
-            print(f"✅ {pdf_url} ダウンロード＆チェック完了")
+            print(f"✅ {pdf_url} ダウンロード完了")
 
         print(f"📑 PDFをマージ中...")
 
