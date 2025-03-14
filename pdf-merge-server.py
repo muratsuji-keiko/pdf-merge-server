@@ -2,7 +2,7 @@ import requests
 import time
 import traceback
 from flask import Flask, request, jsonify
-from PyPDF2 import PdfMerger, PdfReader
+from PyPDF2 import PdfMerger
 import os
 
 app = Flask(__name__)
@@ -19,6 +19,7 @@ def merge_pdfs():
         output_file = "/tmp/merged_output.pdf"
 
         if not pdf_urls:
+            print("❌ エラー: PDFファイルのURLが指定されていません")
             return jsonify({"error": "PDFファイルのURLが指定されていません"}), 400
 
         print(f"📥 {len(pdf_urls)}個のPDFをダウンロード開始...")
@@ -27,10 +28,15 @@ def merge_pdfs():
         for i, pdf_url in enumerate(pdf_urls):
             print(f"🚀 ダウンロード開始: {pdf_url}")
 
-            response = requests.get(pdf_url, stream=True)
+            try:
+                response = requests.get(pdf_url, stream=True)
+            except Exception as e:
+                print(f"❌ リクエストエラー: {pdf_url} ({str(e)})")
+                return jsonify({"error": f"リクエストエラー: {pdf_url}"}), 400
+
             print(f"🔍 ステータスコード: {response.status_code}")
             print(f"🔍 Content-Type: {response.headers.get('Content-Type')}")
-            print(f"🔍 最初の100バイト: {response.content[:100]}")  # HTMLの場合すぐ分かる
+            print(f"🔍 最初の100バイト: {response.content[:100]}")  # HTMLの可能性をチェック
 
             if response.status_code != 200:
                 print(f"❌ ダウンロード失敗: {pdf_url} (ステータスコード: {response.status_code})")
@@ -40,21 +46,19 @@ def merge_pdfs():
             with open(temp_path, "wb") as f:
                 f.write(response.content)
 
-            # **(A) ダウンロードしたデータの最初のバイトをチェック**
-            with open(temp_path, "rb") as f:
-                header = f.read(4)
-                if header != b"%PDF":
-                    print(f"⚠️ 無効なPDF: {pdf_url}（ヘッダーが違う）")
-                    return jsonify({"error": f"無効なPDF: {pdf_url}"}), 400
-
             temp_pdf_files.append(temp_path)
-            print(f"✅ {pdf_url} ダウンロード＆チェック完了")
+            print(f"✅ {pdf_url} ダウンロード完了")
 
         print(f"📑 PDFをマージ中...")
 
         merger = PdfMerger()
         for pdf in temp_pdf_files:
-            merger.append(pdf)
+            try:
+                merger.append(pdf)
+            except Exception as e:
+                print(f"❌ PDFマージ失敗: {pdf} ({str(e)})")
+                return jsonify({"error": f"PDFマージ失敗: {pdf}"}), 400
+
         merger.write(output_file)
         merger.close()
 
