@@ -4,16 +4,16 @@ import os
 
 app = Flask(__name__)
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
-    return "PDF Merge API is running!"
+    return "✅ PDF Merge API が実行されています!"
 
-# 📌 PDFを結合するエンドポイント（POSTリクエストを受け付ける）
+# 📌 `POST` メソッドを明示的に許可
 @app.route("/merge_pdfs", methods=["POST"])
 def merge_pdfs():
     try:
-        pdf_files = request.json.get("pdf_files", [])  # JSONのリクエストデータを取得
-        output_file = "/tmp/merged_output.pdf"  # Renderの一時保存用フォルダ
+        pdf_files = request.json.get("pdf_files", [])  # JSONデータを取得
+        output_file = "/tmp/merged_output.pdf"  # Renderの一時保存フォルダ
 
         if not pdf_files:
             return jsonify({"error": "PDFファイルが指定されていません"}), 400
