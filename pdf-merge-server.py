@@ -3,6 +3,7 @@ import time
 import traceback
 import os
 import re
+import base64
 from flask import Flask, request, jsonify
 from PyPDF2 import PdfMerger
 
@@ -81,6 +82,39 @@ def merge_pdfs():
     except Exception as e:
         error_message = traceback.format_exc()
         print(f"❌ サーバー内部エラー:\n{error_message}")
+        return jsonify({"error": str(e)}), 500
+
+# 📌 追加: GASからBase64エンコードされたPDFを受け取るエンドポイント
+@app.route("/upload_pdf", methods=["POST"])
+def upload_pdf():
+    try:
+        data = request.json
+        filename = data.get("filename")
+        file_content = data.get("data")
+
+        if not filename or not file_content:
+            return jsonify({"error": "ファイル名またはデータが不足しています"}), 400
+
+        # 🚀 Base64デコード処理
+        try:
+            pdf_data = base64.b64decode(file_content)
+        except Exception as e:
+            return jsonify({"error": f"Base64デコードエラー: {str(e)}"}), 400
+
+        # ファイル名をサニタイズ
+        sanitized_filename = sanitize_filename(filename)
+        output_path = f"/tmp/{sanitized_filename}"
+
+        with open(output_path, "wb") as f:
+            f.write(pdf_data)
+
+        print(f"✅ PDF受信完了: {output_path}")
+
+        return jsonify({"message": "✅ PDFアップロード成功", "saved_file": output_path}), 200
+
+    except Exception as e:
+        error_message = traceback.format_exc()
+        print(f"❌ エラー:\n{error_message}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
