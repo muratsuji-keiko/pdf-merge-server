@@ -1,8 +1,8 @@
 import requests
-import time  # 🕒 時間計測用
-import traceback  # ❌ エラー詳細を取得
+import time
+import traceback
 from flask import Flask, request, jsonify
-from PyPDF2 import PdfMerger
+from PyPDF2 import PdfMerger, PdfReader
 import os
 
 app = Flask(__name__)
@@ -13,9 +13,9 @@ def home():
 
 @app.route("/merge_pdfs", methods=["POST"])
 def merge_pdfs():
-    start_time = time.time()  # 🕒 開始時間記録
+    start_time = time.time()
     try:
-        pdf_urls = request.json.get("pdf_files", [])  # JSONデータを取得
+        pdf_urls = request.json.get("pdf_files", [])
         output_file = "/tmp/merged_output.pdf"
 
         if not pdf_urls:
@@ -25,7 +25,7 @@ def merge_pdfs():
 
         temp_pdf_files = []
         for i, pdf_url in enumerate(pdf_urls):
-            response = requests.get(pdf_url, stream=True)  # 🕒 ストリーミングダウンロード
+            response = requests.get(pdf_url, stream=True)
             if response.status_code != 200:
                 print(f"❌ ダウンロード失敗: {pdf_url} (ステータスコード: {response.status_code})")
                 return jsonify({"error": f"ダウンロード失敗: {pdf_url}"}), 400
@@ -34,8 +34,15 @@ def merge_pdfs():
             with open(temp_path, "wb") as f:
                 f.write(response.content)
 
+            # 📌 PDF形式であることを確認（最初の4バイトが "%PDF" で始まるか）
+            with open(temp_path, "rb") as f:
+                header = f.read(4)
+                if header != b"%PDF":
+                    print(f"⚠️ 無効なPDF: {temp_path}（ファイル形式が違う）")
+                    return jsonify({"error": f"無効なPDF: {pdf_url}"}), 400
+
             temp_pdf_files.append(temp_path)
-            print(f"✅ {pdf_url} ダウンロード完了")
+            print(f"✅ {pdf_url} ダウンロード＆チェック完了")
 
         print(f"📑 PDFをマージ中...")
 
@@ -48,14 +55,14 @@ def merge_pdfs():
         for pdf in temp_pdf_files:
             os.remove(pdf)
 
-        elapsed_time = time.time() - start_time  # 🕒 経過時間計算
+        elapsed_time = time.time() - start_time
         print(f"✅ PDFマージ完了！処理時間: {elapsed_time:.2f} 秒")
 
         return jsonify({"message": "✅ PDFマージ完了", "output_file": output_file, "time_taken": elapsed_time})
 
     except Exception as e:
-        error_message = traceback.format_exc()  # ❌ エラー詳細を取得
-        print(f"❌ サーバー内部エラー:\n{error_message}")  # Renderのログに出力
+        error_message = traceback.format_exc()
+        print(f"❌ サーバー内部エラー:\n{error_message}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
