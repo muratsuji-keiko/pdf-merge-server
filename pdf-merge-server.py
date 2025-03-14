@@ -2,7 +2,7 @@ import requests
 import time
 import traceback
 from flask import Flask, request, jsonify
-from PyPDF2 import PdfMerger
+from PyPDF2 import PdfMerger, PdfReader
 import os
 
 app = Flask(__name__)
@@ -45,6 +45,15 @@ def merge_pdfs():
             temp_path = f"/tmp/temp_pdf_{i}.pdf"
             with open(temp_path, "wb") as f:
                 f.write(response.content)
+
+            # ✅ PDFとして開けるかチェック
+            try:
+                with open(temp_path, "rb") as f:
+                    PdfReader(f)
+            except Exception as e:
+                print(f"❌ 無効なPDF: {pdf_url} ({str(e)})")
+                os.remove(temp_path)  # 破損ファイルは削除
+                return jsonify({"error": f"無効なPDF: {pdf_url}"}), 400
 
             temp_pdf_files.append(temp_path)
             print(f"✅ {pdf_url} ダウンロード完了")
